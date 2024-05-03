@@ -1,0 +1,132 @@
+@page "/"
+@using Markdig
+@using Microsoft.JSInterop
+@inject LanguageService LanguageService
+@inject IJSRuntime JavaScript
+<HeadContent>
+    <title>Home - Reqcraft</title>
+</HeadContent>
+
+<div class="container-fluid vh-100">
+    <div class="row vh-100">
+        <div class="col-md-2 bg-light">
+
+        </div>
+        <div class="col position-relative d-flex overflow-hidden flex-column vh-100 w-100">
+            <div class="d-flex flex-grow-1 flex-column position-relative overflow-y-auto" @ref="_messagesContainer">
+                <div class="container">
+                    <div class="row">
+                        <div class="col">
+                            @foreach (var message in _messages)
+                            {
+                                <div class="mb-2">
+                                    @if (message.Role == ChatRole.Assistant)
+                                    {
+                                        <p class="text-body-tertiary mb-0">Response received @message.Timestamp</p>
+                                        <div class="card me-5">
+                                            <div class="card-body">
+                                                @(new MarkupString(Markdown.ToHtml(message.Content)))
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (message.Role == ChatRole.User)
+                                    {
+                                        <p class="text-body-tertiary mb-0 text-end">You wrote at @message.Timestamp</p>
+                                        <div class="card ms-5">
+                                            <div class="card-body">
+                                                @(new MarkupString(Markdown.ToHtml(message.Content)))
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            @if (_generatingResponse)
+                            {
+                                <div class="mb-2">
+                                    <p class="text-body-tertiary mb-0">Generating response...</p>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            @(new MarkupString(Markdown.ToHtml(_generatedResponse)))
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="justify-content-center flex-shrink-0">
+                <div class="container">
+                    <div class="row mb-2">
+                        <div class="col">
+                            <textarea class="form-control" rows="4" @bind-value="_userPrompt" @bind-value:event="oninput" @onkeyup="OnUserPromptKeyUp"></textarea>
+                        </div>
+                    </div>
+                    <div class="row justify-content-end mb-4">
+                        <div class="col-auto">
+                            <button class="btn btn-primary" @onclick="OnSubmitUserPromptClick">
+                                <i class="bi bi-send"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    private List<ChatMessage> _messages = new();
+    private string _userPrompt = "";
+    private bool _generatingResponse = false;
+    private string _generatedResponse = "";
+    private ElementReference _messagesContainer;
+    
+    private async Task OnUserPromptKeyUp(KeyboardEventArgs e)
+    {
+        if ((e.CtrlKey || e.MetaKey) && e.Code == "Enter")
+        {
+            await SubmitUserPrompt();
+        }
+    }
+
+    private async Task OnSubmitUserPromptClick()
+    {
+        await SubmitUserPrompt();
+    }
+
+    private async Task SubmitUserPrompt()
+    {
+        var promptValue = _userPrompt;
+
+        _generatingResponse = true;
+        _userPrompt = "";
+        _messages.Add(new ChatMessage(DateTime.UtcNow, ChatRole.User, promptValue));
+
+        StateHasChanged();
+
+        await foreach (var chunk in LanguageService.GenerateResponseAsync(promptValue, _messages.SkipLast(1).ToList()))
+        {
+            _generatedResponse += chunk;
+            
+            StateHasChanged();
+            
+            await ScrollMessagesToBottom();
+        }
+
+        _messages.Add(new ChatMessage(DateTime.UtcNow, ChatRole.Assistant, _generatedResponse));
+        _generatedResponse = "";
+
+        _generatingResponse = false;
+
+        StateHasChanged();
+        
+        await ScrollMessagesToBottom();
+    }
+
+    private async Task ScrollMessagesToBottom()
+    {
+        await JavaScript.InvokeVoidAsync("window.reqcraft.scrollContainer", _messagesContainer);
+    }
+}
