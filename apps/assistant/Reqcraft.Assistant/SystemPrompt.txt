@@ -41,4 +41,3 @@ Scenario: User logs in with correct username and password
   And the user clicks the "Log In" button
   Then the user should be redirected to their account page
 ```
-

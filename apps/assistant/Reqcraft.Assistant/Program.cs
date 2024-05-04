@@ -1,13 +1,11 @@
 using System.Data.Common;
 using Marten;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Reqcraft.Assistant.Components;
-using Reqcraft.Assistant.Configuration;
 using Reqcraft.Assistant.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
+ 
 builder.AddServiceDefaults();
 
 builder.Services.AddNpgsqlDataSource("assistantDb");
@@ -22,17 +20,20 @@ builder.Services
 
 builder.Services.AddAntiforgery();
 
-var languageModelOptions = builder.Configuration.GetRequiredSection("LanguageModel").Get<LanguageModelOptions>()!;
+var languageModelConnectionString = new DbConnectionStringBuilder
+{
+    ConnectionString = builder.Configuration.GetConnectionString("languageModel")
+};
 
 var kernel = builder.Services.AddKernel()
     .AddAzureOpenAIChatCompletion(
-        languageModelOptions.ChatDeploymentName,
-        languageModelOptions.Endpoint,
-        languageModelOptions.ApiKey)
+        "gpt-40",
+        languageModelConnectionString["Endpoint"].ToString()!,
+        languageModelConnectionString["Key"].ToString()!)
     .AddAzureOpenAITextEmbeddingGeneration(
-        languageModelOptions.EmbeddingDeploymentName, 
-        languageModelOptions.Endpoint, 
-        languageModelOptions.ApiKey);
+        "embedding",
+        languageModelConnectionString["Endpoint"].ToString()!,
+        languageModelConnectionString["Key"].ToString()!);
 
 builder.Services.AddTransient<LanguageService>();
 

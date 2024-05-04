@@ -9,6 +9,8 @@
     <PackageReference Include="Aspire.Qdrant.Client" Version="8.0.0-preview.6.24214.1" />
     <PackageReference Include="Markdig" Version="0.37.0" />
     <PackageReference Include="Marten" Version="7.10.1" />
+    <PackageReference Include="Microsoft.KernelMemory.Core" Version="0.50.240504.4" />
+    <PackageReference Include="Microsoft.KernelMemory.SemanticKernelPlugin" Version="0.50.240504.4" />
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.10.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.10.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Qdrant" Version="1.10.0-alpha" />
