@@ -1,12 +1,15 @@
 using System.Data.Common;
 using Marten;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Memory;
+using Microsoft.SemanticKernel.Plugins.Memory;
 using Reqcraft.Assistant.Components;
 using Reqcraft.Assistant.Services;
 
 var builder = WebApplication.CreateBuilder(args);
  
 builder.AddServiceDefaults();
+builder.AddQdrantClient("vectorDb");
 
 builder.Services.AddNpgsqlDataSource("assistantDb");
 builder.Services.AddMarten(options =>
@@ -35,7 +38,10 @@ var kernel = builder.Services.AddKernel()
         languageModelConnectionString["Endpoint"].ToString()!,
         languageModelConnectionString["Key"].ToString()!);
 
+kernel.Services.AddSingleton<IFunctionInvocationFilter, MemoryInvocationFilter>();
+
 builder.Services.AddTransient<LanguageService>();
+builder.Services.AddTransient<ApplicationMemoryStore>();
 
 var app = builder.Build();
 

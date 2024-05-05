@@ -41,3 +41,12 @@ Scenario: User logs in with correct username and password
   And the user clicks the "Log In" button
   Then the user should be redirected to their account page
 ```
+
+## Useful information
+
+Use the information between [CONTENT] and [/CONTENT] to complete the definition of done for the user story.
+The content contains important information related to security.
+
+[CONTENT]
+{{ memory.recall $input }}
+[/CONTENT]

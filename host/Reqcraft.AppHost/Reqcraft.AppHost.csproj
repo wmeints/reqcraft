@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="8.0.0-preview.6.24214.1" />
+    <PackageReference Include="Aspire.Hosting.Azure.CognitiveServices"
+      Version="8.0.0-preview.6.24214.1" />
     <PackageReference Include="Aspire.Hosting.PostgresQL" Version="8.0.0-preview.6.24214.1" />
     <PackageReference Include="Aspire.Hosting.Qdrant" Version="8.0.0-preview.6.24214.1" />
   </ItemGroup>
