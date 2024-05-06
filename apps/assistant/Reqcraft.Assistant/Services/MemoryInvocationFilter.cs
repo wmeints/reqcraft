@@ -17,6 +17,15 @@ public class MemoryInvocationFilter(Qdrant.Client.QdrantClient vectorStoreClient
             catch (RpcException ex) when(ex.StatusCode == StatusCode.NotFound)
             {
                 await vectorStoreClient.CreateCollectionAsync("generic", new VectorParams { Distance = Distance.Cosine, Size = 1536 });
+                bool exists = false;
+                
+                // Wait for the collection to be created
+                // Qdrant is eventually consistent so the initial create operation might not be immediately visible.
+                do
+                {
+                    exists = await vectorStoreClient.CollectionExistsAsync("generic");
+                } while (!exists);
+                
                 await next(context);
             }
         }
