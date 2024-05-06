@@ -2,10 +2,7 @@ using System.Reflection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Embeddings;
-using Microsoft.SemanticKernel.Memory;
-using Microsoft.SemanticKernel.Plugins.Memory;
 using Reqcraft.Assistant.Domain;
 using SharpToken;
 
@@ -20,11 +17,6 @@ public class LanguageService(Kernel kernel, ApplicationMemoryStore memoryStore)
         var chatCompletionService = kernel.Services.GetRequiredService<IChatCompletionService>();
         var textEmbeddingService = kernel.Services.GetRequiredService<ITextEmbeddingGenerationService>();
 
-        // Add the semantic memory plugin and connect it to the application memory store.
-        // This is a gross workaround for the fact that Microsoft screwed up their version of the qdrant connector.
-        // It doesn't support API keys which we need for a secure connection.
-        kernel.Plugins.AddFromObject(new TextMemoryPlugin(new SemanticTextMemory(memoryStore, textEmbeddingService)), "memory");
-        
         var systemPrompt = await RenderSystemPrompt(new KernelArguments { { "input", userPrompt } });
 
         // Limit the number of tokens to 4000 to avoid hitting the OpenAI token limit.

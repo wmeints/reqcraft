@@ -1,6 +1,8 @@
 using System.Data.Common;
 using Marten;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Memory;
+using Microsoft.SemanticKernel.Plugins.Memory;
 using Reqcraft.Assistant.Components;
 using Reqcraft.Assistant.Services;
 
@@ -36,6 +38,11 @@ var kernel = builder.Services.AddKernel()
         languageModelConnectionString["Endpoint"].ToString()!,
         languageModelConnectionString["Key"].ToString()!);
 
+// Configure the memory plugin with associated services.
+// This is a workaround for the fact that Microsoft's version of the qdrant connector doesn't support API keys.
+kernel.Plugins.AddFromType<TextMemoryPlugin>("memory");
+kernel.Services.AddTransient<ISemanticTextMemory, SemanticTextMemory>();
+kernel.Services.AddTransient<IMemoryStore, ApplicationMemoryStore>();
 kernel.Services.AddSingleton<IFunctionInvocationFilter, MemoryInvocationFilter>();
 
 builder.Services.AddTransient<LanguageService>();
