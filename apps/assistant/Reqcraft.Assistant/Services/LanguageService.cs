@@ -17,8 +17,6 @@ public class LanguageService(Kernel kernel, ApplicationMemoryStore memoryStore)
 
     public async IAsyncEnumerable<string> GenerateResponseAsync(string userPrompt, List<ChatMessage> messages)
     {
-        
-        
         var chatCompletionService = kernel.Services.GetRequiredService<IChatCompletionService>();
         var textEmbeddingService = kernel.Services.GetRequiredService<ITextEmbeddingGenerationService>();
 
