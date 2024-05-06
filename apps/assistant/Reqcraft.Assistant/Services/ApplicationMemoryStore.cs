@@ -1,5 +1,4 @@
-﻿using Google.Protobuf.Collections;
-using Marten;
+﻿using System.Runtime.CompilerServices;
 using Microsoft.SemanticKernel.Memory;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
@@ -19,7 +18,7 @@ public class ApplicationMemoryStore(QdrantClient client) : IMemoryStore
     }
 
     public async IAsyncEnumerable<string> GetCollectionsAsync(
-        CancellationToken cancellationToken = new CancellationToken())
+        [EnumeratorCancellation] CancellationToken cancellationToken = new CancellationToken())
     {
         var collections = await client.ListCollectionsAsync(cancellationToken: cancellationToken);
 
@@ -62,7 +61,7 @@ public class ApplicationMemoryStore(QdrantClient client) : IMemoryStore
     }
 
     public async IAsyncEnumerable<string> UpsertBatchAsync(string collectionName, IEnumerable<MemoryRecord> records,
-        CancellationToken cancellationToken = new CancellationToken())
+        [EnumeratorCancellation] CancellationToken cancellationToken = new CancellationToken())
     {
         var storeRecords = await Task
             .WhenAll(records.Select(async record => await ConvertFromMemoryRecordAsync(collectionName, record)))
@@ -121,7 +120,7 @@ public class ApplicationMemoryStore(QdrantClient client) : IMemoryStore
 
     public async IAsyncEnumerable<MemoryRecord> GetBatchAsync(string collectionName, IEnumerable<string> keys,
         bool withEmbeddings = false,
-        CancellationToken cancellationToken = new CancellationToken())
+        [EnumeratorCancellation] CancellationToken cancellationToken = new CancellationToken())
     {
         foreach (var key in keys)
         {
@@ -154,13 +153,11 @@ public class ApplicationMemoryStore(QdrantClient client) : IMemoryStore
     public async IAsyncEnumerable<(MemoryRecord, double)> GetNearestMatchesAsync(string collectionName,
         ReadOnlyMemory<float> embedding, int limit,
         double minRelevanceScore = 0, bool withEmbeddings = false,
-        CancellationToken cancellationToken = new CancellationToken())
+        [EnumeratorCancellation] CancellationToken cancellationToken = new CancellationToken())
     {
-        WithPayloadSelector? payloadSelection = new WithPayloadSelector
+        var payloadSelection = new WithPayloadSelector
         {
-            Include = new PayloadIncludeSelector
-            {
-            }
+            Include = new PayloadIncludeSelector()
         };
 
         payloadSelection.Include.Fields.AddRange([
@@ -181,18 +178,50 @@ public class ApplicationMemoryStore(QdrantClient client) : IMemoryStore
                 externalSourceName: result.Payload["ExternalSourceName"].StringValue,
                 additionalMetadata: result.Payload["AdditionalMetadata"].StringValue);
 
-            var memoryRecord = new MemoryRecord(metadata: recordMetadata, embedding: result.Vectors.Vector.Data.ToArray(),
-                key: result.Id.Uuid.ToString());
+            var memoryRecord = new MemoryRecord(
+                metadata: recordMetadata, 
+                embedding: result.Vectors.Vector.Data.ToArray(),
+                key: result.Id.Uuid);
 
             yield return (memoryRecord, result.Score);
         }
     }
 
-    public Task<(MemoryRecord, double)?> GetNearestMatchAsync(string collectionName, ReadOnlyMemory<float> embedding,
+    public async Task<(MemoryRecord, double)?> GetNearestMatchAsync(string collectionName, ReadOnlyMemory<float> embedding,
         double minRelevanceScore = 0,
         bool withEmbedding = false, CancellationToken cancellationToken = new CancellationToken())
     {
-        throw new NotImplementedException();
+        var payloadSelection = new WithPayloadSelector
+        {
+            Include = new PayloadIncludeSelector()
+        };
+
+        payloadSelection.Include.Fields.AddRange([
+            "Id", "Description", "Text", "ExternalSourceName", "IsReference", "AdditionalMetadata"
+        ]);
+
+        var results = await client.SearchAsync(
+            collectionName, embedding, limit: 3, scoreThreshold: (float)minRelevanceScore,
+            payloadSelector: payloadSelection, cancellationToken: cancellationToken);
+
+        if (results.Count <= 0) return null;
+        
+        var result = results[0];
+            
+        var recordMetadata = new MemoryRecordMetadata(
+            isReference: result.Payload["IsReference"].BoolValue,
+            id: result.Payload["Id"].StringValue,
+            text: result.Payload["Text"].StringValue,
+            description: result.Payload["Description"].StringValue,
+            externalSourceName: result.Payload["ExternalSourceName"].StringValue,
+            additionalMetadata: result.Payload["AdditionalMetadata"].StringValue);
+
+        var memoryRecord = new MemoryRecord(
+            metadata: recordMetadata, 
+            embedding: result.Vectors.Vector.Data.ToArray(),
+            key: result.Id.Uuid);
+
+        return (memoryRecord, result.Score);
     }
 
     private async Task<QdrantMemoryRecord> ConvertFromMemoryRecordAsync(string collectionName, MemoryRecord record)

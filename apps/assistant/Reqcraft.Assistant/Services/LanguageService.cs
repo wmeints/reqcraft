@@ -2,20 +2,18 @@ using System.Reflection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Microsoft.SemanticKernel.Embeddings;
 using Reqcraft.Assistant.Domain;
 using SharpToken;
 
 namespace Reqcraft.Assistant.Services;
 
-public class LanguageService(Kernel kernel, ApplicationMemoryStore memoryStore)
+public class LanguageService(Kernel kernel)
 {
     private static readonly GptEncoding Encoding = GptEncoding.GetEncodingForModel("gpt-4");
 
     public async IAsyncEnumerable<string> GenerateResponseAsync(string userPrompt, List<ChatMessage> messages)
     {
         var chatCompletionService = kernel.Services.GetRequiredService<IChatCompletionService>();
-        var textEmbeddingService = kernel.Services.GetRequiredService<ITextEmbeddingGenerationService>();
 
         var systemPrompt = await RenderSystemPrompt(new KernelArguments { { "input", userPrompt } });
 

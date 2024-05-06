@@ -4,9 +4,9 @@ namespace Reqcraft.Assistant.Services;
 
 public class QdrantMemoryRecord
 {
-    public string PointId { get; set; }
-    public Dictionary<string,object> Payload { get; set; }
-    public float[] Embedding { get; set; }
+    public required string PointId { get; init; }
+    public Dictionary<string, object> Payload { get; init; } = new();
+    public required float[] Embedding { get; init; }
 
     public Dictionary<string, Value> GetPointPayload()
     {
