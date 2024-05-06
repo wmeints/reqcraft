@@ -1,5 +1,7 @@
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -36,7 +38,7 @@ public static class Extensions
             logging.IncludeScopes = true;
         });
 
-        builder.Services.AddOpenTelemetry()
+        var openTelemetryBuilder = builder.Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
             {
                 metrics.AddAspNetCoreInstrumentation()
@@ -53,6 +55,11 @@ public static class Extensions
             });
 
         builder.AddOpenTelemetryExporters();
+
+        openTelemetryBuilder.UseAzureMonitor(options =>
+        {
+            options.ConnectionString = builder.Configuration.GetConnectionString("app-insights");
+        });
 
         return builder;
     }

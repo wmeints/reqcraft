@@ -7,9 +7,9 @@ using Reqcraft.Assistant.Services;
 var builder = WebApplication.CreateBuilder(args);
  
 builder.AddServiceDefaults();
-builder.AddQdrantClient("vectorDb");
+builder.AddQdrantClient("vector-db");
 
-builder.Services.AddNpgsqlDataSource("assistantDb");
+builder.Services.AddNpgsqlDataSource("assistant-db");
 builder.Services.AddMarten(options =>
 {
     
@@ -23,7 +23,7 @@ builder.Services.AddAntiforgery();
 
 var languageModelConnectionString = new DbConnectionStringBuilder
 {
-    ConnectionString = builder.Configuration.GetConnectionString("languageModel")
+    ConnectionString = builder.Configuration.GetConnectionString("language-model")
 };
 
 var kernel = builder.Services.AddKernel()

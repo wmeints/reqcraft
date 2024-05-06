@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Aspire.Hosting.Azure.ApplicationInsights" Version="8.0.0-preview.6.24214.1" />
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.2.0-beta.3" />
 
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="8.4.0" />
     <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" Version="8.0.0-preview.6.24214.1" />
