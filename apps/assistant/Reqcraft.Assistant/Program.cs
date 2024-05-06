@@ -1,8 +1,6 @@
 using System.Data.Common;
 using Marten;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Memory;
-using Microsoft.SemanticKernel.Plugins.Memory;
 using Reqcraft.Assistant.Components;
 using Reqcraft.Assistant.Services;
 
