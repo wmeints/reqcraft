@@ -2,8 +2,6 @@ using Projects;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-//var vectorStoreApiKey = builder.AddParameter("VectorStoreApiKey", true);
-
 var databaseServer = builder.AddPostgres("postgres");
 var assistantDb = databaseServer.AddDatabase("assistantDb");
 
