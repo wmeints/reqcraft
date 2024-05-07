@@ -2,54 +2,72 @@
 @using System.Text.RegularExpressions
 @using Markdig
 @using Microsoft.JSInterop
-@inject LanguageService LanguageService
+@using Reqcraft.Assistant.Domain.ConversationAggregate
+@using Reqcraft.Assistant.Domain.ConversationAggregate.Commands
+@using Reqcraft.Assistant.Domain.ConversationHistory
+@using Reqcraft.Assistant.Domain.Shared
+@inject ILanguageService LanguageService
+@inject IConversationHistoryService HistoryService
 @inject IJSRuntime JavaScript
+@inject AggregateRepository Repository
 <HeadContent>
     <title>Home - Reqcraft</title>
 </HeadContent>
 
 <div class="container-fluid vh-100">
     <div class="row vh-100">
-        <div class="col-md-2 bg-light">
-
+        <div class="col-md-2 bg-light p-4">
+            <h1 class="h3">Reqcraft</h1>
+            <hr>
+            <button class="btn btn-outline-primary w-100" @onclick="StartNewConversation">Start new conversation</button>
+            <hr>
+            <ul class="list-unstyled">
+                @foreach (var record in _history)
+                {
+                    <li><a href="#" @onclick:preventDefault="true" @onclick="() => LoadConversation(record.ConversationId)">@record.Date.ToLocalTime()</a></li>
+                }
+            </ul>
         </div>
         <div class="col position-relative d-flex overflow-hidden flex-column vh-100 w-100">
             <div class="d-flex flex-grow-1 flex-column position-relative overflow-y-auto" @ref="_messagesContainer">
                 <div class="container">
                     <div class="row">
                         <div class="col">
-                            @foreach (var message in _messages)
+                            @if(_conversation != null)
                             {
-                                <div class="mb-2">
-                                    @if (message.Role == ChatRole.Assistant)
-                                    {
-                                        <div class="d-flex flex-row me-5">
-                                            <div class="flex-grow-1 text-body-tertiary mb-0 pt-2">Response received @message.Timestamp</div>
-                                            <button class="btn btn-link" @onclick="() => CopyMessageContent(message)">
-                                                <i class="bi bi-clipboard"></i>
-                                            </button>
-                                        </div>
-                                        <div class="card me-5">
-                                            <div class="card-body">
-                                                @(new MarkupString(Markdown.ToHtml(message.Content)))
+                                @foreach (var message in _conversation.Messages)
+                                {
+                                    <div class="mb-2">
+                                        @if (message.Role == ChatRole.Assistant)
+                                        {
+                                            <div class="d-flex flex-row me-5">
+                                                <div class="flex-grow-1 text-body-tertiary mb-0 pt-2">Response received @message.Timestamp.ToLocalTime()</div>
+                                                <button class="btn btn-link" @onclick="() => CopyMessageContent(message)">
+                                                    <i class="bi bi-clipboard"></i>
+                                                </button>
                                             </div>
-                                        </div>
-                                    }
-                                    @if (message.Role == ChatRole.User)
-                                    {
-                                        <div class="d-flex flex-row justify-content-end ms-5">
-                                            <div class="text-body-tertiary mb-0 text-end me-2 pt-2">You wrote at @message.Timestamp</div>
-                                            <button class="btn btn-link" @onclick="() => CopyMessageContent(message)">
-                                                <i class="bi bi-clipboard"></i>
-                                            </button>
-                                        </div>
-                                        <div class="card ms-5">
-                                            <div class="card-body">
-                                                @(new MarkupString(Markdown.ToHtml(message.Content)))
+                                            <div class="card me-5">
+                                                <div class="card-body">
+                                                    @(new MarkupString(Markdown.ToHtml(message.Content)))
+                                                </div>
                                             </div>
-                                        </div>
-                                    }
-                                </div>
+                                        }
+                                        @if (message.Role == ChatRole.User)
+                                        {
+                                            <div class="d-flex flex-row justify-content-end ms-5">
+                                                <div class="text-body-tertiary mb-0 text-end me-2 pt-2">You wrote at @message.Timestamp.ToLocalTime()</div>
+                                                <button class="btn btn-link" @onclick="() => CopyMessageContent(message)">
+                                                    <i class="bi bi-clipboard"></i>
+                                                </button>
+                                            </div>
+                                            <div class="card ms-5">
+                                                <div class="card-body">
+                                                    @(new MarkupString(Markdown.ToHtml(message.Content)))
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
                             }
                             @if (_generatingResponse)
                             {
@@ -88,13 +106,20 @@
 
 @code {
     private readonly Regex _markdownPattern = new("```markdown\n(.*)\n```", RegexOptions.Multiline);
-    
-    private List<ChatMessage> _messages = new();
+
+    private Conversation? _conversation;
+    private List<HistoryRecord> _history = new();
     private string _userPrompt = "";
     private bool _generatingResponse = false;
     private string _generatedResponse = "";
     private ElementReference _messagesContainer;
-    
+
+    protected override async Task OnInitializedAsync()
+    {
+        var historyRecords = await HistoryService.GetConversationHistoryAsync();
+        _history = new List<HistoryRecord>(historyRecords);
+    }
+
     private async Task OnUserPromptKeyUp(KeyboardEventArgs e)
     {
         if ((e.CtrlKey || e.MetaKey) && e.Code == "Enter")
@@ -110,15 +135,21 @@
 
     private async Task SubmitUserPrompt()
     {
-        var promptValue = _userPrompt;
-
         _generatingResponse = true;
+
+        if (_conversation == null)
+        {
+            _conversation = Conversation.Start(new StartConversation(Guid.NewGuid()));
+        }
+        
+        var promptValue = _userPrompt;
         _userPrompt = "";
-        _messages.Add(new ChatMessage(DateTime.UtcNow, ChatRole.User, promptValue));
+        
+        var result = _conversation.SendMessage(new SendMessage(_conversation.Id, promptValue), LanguageService);
 
         StateHasChanged();
 
-        await foreach (var chunk in LanguageService.GenerateResponseAsync(promptValue, _messages.SkipLast(1).ToList()))
+        await foreach (var chunk in result.ResponseStream)
         {
             _generatedResponse += chunk;
             
@@ -127,14 +158,16 @@
             await ScrollMessagesToBottom();
         }
 
-        _messages.Add(new ChatMessage(DateTime.UtcNow, ChatRole.Assistant, _generatedResponse));
         _generatedResponse = "";
-
         _generatingResponse = false;
 
         StateHasChanged();
         
         await ScrollMessagesToBottom();
+
+        await Repository.SaveAsync(_conversation);
+
+        _history = new List<HistoryRecord>(await HistoryService.GetConversationHistoryAsync());
     }
 
     private async Task ScrollMessagesToBottom()
@@ -154,5 +187,16 @@
         {
             await JavaScript.InvokeVoidAsync("window.reqcraft.copyContent", message.Content);    
         }
+    }
+
+    private async Task LoadConversation(Guid conversationId)
+    {
+        _conversation = await Repository.LoadAsync<Conversation>(conversationId);
+        StateHasChanged();
+    }
+
+    private void StartNewConversation()
+    {
+        _conversation = null;
     }
 }

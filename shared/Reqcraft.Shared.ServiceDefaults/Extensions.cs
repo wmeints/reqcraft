@@ -10,6 +10,8 @@ using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using Polly;
+using Polly.Retry;
 
 namespace Microsoft.Extensions.Hosting;
 

@@ -7,7 +7,7 @@ using SharpToken;
 
 namespace Reqcraft.Assistant.Services;
 
-public class LanguageService(Kernel kernel)
+public class LanguageService(Kernel kernel): ILanguageService
 {
     private static readonly GptEncoding Encoding = GptEncoding.GetEncodingForModel("gpt-4");
 
@@ -21,7 +21,7 @@ public class LanguageService(Kernel kernel)
         var systemPromptTokens = Encoding.CountTokens($"system: {systemPrompt}");
         var userPromptTokens = Encoding.CountTokens($"user: {userPrompt}\n");
         var remainingTokens = 4000 - systemPromptTokens - userPromptTokens;
-        
+
         var filteredMessages = FilterChatHistory(remainingTokens, messages);
         var history = BuildChatHistory(systemPrompt, userPrompt, filteredMessages);
 
@@ -46,7 +46,7 @@ public class LanguageService(Kernel kernel)
     private ChatHistory BuildChatHistory(string systemPrompt, string userPrompt, List<ChatMessage> messages)
     {
         var history = new ChatHistory();
-        
+
         history.AddSystemMessage(systemPrompt);
 
         foreach (var message in messages)
