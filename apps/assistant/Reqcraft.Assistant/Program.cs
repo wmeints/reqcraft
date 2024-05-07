@@ -75,38 +75,38 @@ app.UseAntiforgery();
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
-using var scope = app.Services.CreateScope();
-var resiliencePipelineProvider = scope.ServiceProvider.GetRequiredService<ResiliencePipelineProvider<string>>();
-var resiliencePipeline = resiliencePipelineProvider.GetPipeline("RetryMigrations");
-
-// Make sure to create the database when the application starts.
-// We may need to retry this operation if the database is not available yet.
-resiliencePipeline.Execute(() =>
-{
-    var serverDbConnection = new NpgsqlConnectionStringBuilder(app.Configuration.GetConnectionString("assistant-db"));
-    var databaseName = serverDbConnection.Database;
-    
-    serverDbConnection.Database = "";
-
-    using var databaseConnection = new NpgsqlConnection(serverDbConnection.ConnectionString);
-    
-    var findDatabaseCommand = databaseConnection.CreateCommand(
-        $"SELECT 1 FROM pg_database WHERE datname = '{databaseName}'");
-    
-    var createDatabaseCommand = databaseConnection.CreateCommand($"CREATE DATABASE \"{databaseName}\"");
-    
-    var grantAllCommand = databaseConnection.CreateCommand(
-        $"GRANT ALL PRIVILEGES ON DATABASE \"{databaseName}\" TO postgres");
-
-    databaseConnection.Open();
-
-    var databaseExists = findDatabaseCommand.ExecuteScalar() != null;
-
-    if (!databaseExists)
-    {
-        createDatabaseCommand.ExecuteNonQuery();
-        grantAllCommand.ExecuteNonQuery();
-    }
-});
+// using var scope = app.Services.CreateScope();
+// var resiliencePipelineProvider = scope.ServiceProvider.GetRequiredService<ResiliencePipelineProvider<string>>();
+// var resiliencePipeline = resiliencePipelineProvider.GetPipeline("RetryMigrations");
+//
+// // Make sure to create the database when the application starts.
+// // We may need to retry this operation if the database is not available yet.
+// resiliencePipeline.Execute(() =>
+// {
+//     var serverDbConnection = new NpgsqlConnectionStringBuilder(app.Configuration.GetConnectionString("assistant-db"));
+//     var databaseName = serverDbConnection.Database;
+//     
+//     serverDbConnection.Database = "";
+//
+//     using var databaseConnection = new NpgsqlConnection(serverDbConnection.ConnectionString);
+//     
+//     var findDatabaseCommand = databaseConnection.CreateCommand(
+//         $"SELECT 1 FROM pg_database WHERE datname = '{databaseName}'");
+//     
+//     var createDatabaseCommand = databaseConnection.CreateCommand($"CREATE DATABASE \"{databaseName}\"");
+//     
+//     var grantAllCommand = databaseConnection.CreateCommand(
+//         $"GRANT ALL PRIVILEGES ON DATABASE \"{databaseName}\" TO postgres");
+//
+//     databaseConnection.Open();
+//
+//     var databaseExists = findDatabaseCommand.ExecuteScalar() != null;
+//
+//     if (!databaseExists)
+//     {
+//         createDatabaseCommand.ExecuteNonQuery();
+//         grantAllCommand.ExecuteNonQuery();
+//     }
+// });
 
 app.Run();

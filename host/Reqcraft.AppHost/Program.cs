@@ -12,7 +12,12 @@ var applicationInsights = builder.ExecutionContext.IsPublishMode ?
     builder.AddAzureApplicationInsights("app-insights") : 
     builder.AddConnectionString("app-insights");
 
-var databaseServer = builder.AddPostgres("postgres", password: postgresDatabasePassword);
+// Store the data for the SQL Server on the host. This makes it possible to continue debugging without
+// having to repeat setup steps. The init mount is especially useful since it contains the schema and seed data.
+var databaseServer = builder.AddPostgres("postgres", password: postgresDatabasePassword)
+    .WithDataVolume() // Use a volume instead of a bind so that postgres can modify permissions.
+    .WithInitBindMount("../../data/postgres/init");
+
 var assistantDb = databaseServer.AddDatabase("assistant-db");
 
 var vectorDatabase = builder.AddQdrant("vector-db", apiKey: vectorDatabaseApiKey);
